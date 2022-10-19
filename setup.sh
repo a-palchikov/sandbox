@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # stops the execution if a command or pipeline has an error
-set -eu
+set -xeu
 
 # Tinkerbell stack Linux setup script
 #
@@ -338,7 +338,7 @@ generate_certificates() (
 			>"$STATEDIR/certs/server-csr.json"
 	fi
 
-	docker build --tag "tinkerbell-certs" "$DEPLOYDIR/tls"
+	docker buildx build --tag "tinkerbell-certs" "$DEPLOYDIR/tls"
 	docker run --rm \
 		--volume "$STATEDIR/certs:/certs" \
 		--user "$UID:$(id -g)" \
@@ -347,19 +347,19 @@ generate_certificates() (
 	local certs_dir="/etc/docker/certs.d/$TINKERBELL_HOST_IP"
 
 	# copy public key to NGINX for workers
-	if ! cmp --quiet "$STATEDIR"/certs/ca.pem "$STATEDIR/webroot/workflow/ca.pem"; then
+	if ! sudo cmp --quiet "$STATEDIR"/certs/ca.pem "$STATEDIR/webroot/workflow/ca.pem"; then
 		cp "$STATEDIR"/certs/ca.pem "$STATEDIR/webroot/workflow/ca.pem"
 	fi
 
 	# update host to trust registry certificate
-	if ! cmp --quiet "$STATEDIR/certs/ca.pem" "$certs_dir/tinkerbell.crt"; then
+	if ! sudo cmp --quiet "$STATEDIR/certs/ca.pem" "$certs_dir/tinkerbell.crt"; then
 		if [ ! -d "$certs_dir/tinkerbell.crt" ]; then
 			# The user will be told to create the directory
 			# in the next block, if copying the certs there
 			# fails.
-			mkdir -p "$certs_dir" || true >/dev/null 2>&1
+			sudo mkdir -p "$certs_dir" || true >/dev/null 2>&1
 		fi
-		if ! cp "$STATEDIR/certs/ca.pem" "$certs_dir/tinkerbell.crt"; then
+		if ! sudo cp "$STATEDIR/certs/ca.pem" "$certs_dir/tinkerbell.crt"; then
 			echo "$ERR please copy $STATEDIR/certs/ca.pem to $certs_dir/tinkerbell.crt"
 			echo "$BLANK and run $0 again:"
 
